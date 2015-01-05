@@ -51,6 +51,8 @@ class KeystoneClientV2(object):
         self.context = context
         self._client = None
 
+        cfg.CONF.import_group('clients_keystone', 'heat.common.config')
+
         if self.context.trust_id:
             # Create a connection to the v2 API, with the trust_id, this
             # populates self.context.auth_token with a trust-scoped token
@@ -90,10 +92,10 @@ class KeystoneClientV2(object):
             LOG.error(_LE("Keystone v2 API connection failed, no password "
                           "or auth_token!"))
             raise exception.AuthorizationFailure()
-        kwargs['cacert'] = self._get_client_option('ca_file')
-        kwargs['insecure'] = self._get_client_option('insecure')
-        kwargs['cert'] = self._get_client_option('cert_file')
-        kwargs['key'] = self._get_client_option('key_file')
+        kwargs['cacert'] = cfg.CONF.clients_keystone.ca_file
+        kwargs['insecure'] = cfg.CONF.clients_keystone.insecure
+        kwargs['cert'] = cfg.CONF.clients_keystone.cert_file
+        kwargs['key'] = cfg.CONF.clients_keystone.key_file
         client = kc.Client(**kwargs)
 
         client.authenticate(**auth_kwargs)
@@ -129,18 +131,6 @@ class KeystoneClientV2(object):
         }
 
         return creds
-
-    def _get_client_option(self, option):
-        # look for the option in the [clients_keystone] section
-        # unknown options raise cfg.NoSuchOptError
-        cfg.CONF.import_opt(option, 'heat.common.config',
-                            group='clients_keystone')
-        v = getattr(cfg.CONF.clients_keystone, option)
-        if v is not None:
-            return v
-        # look for the option in the generic [clients] section
-        cfg.CONF.import_opt(option, 'heat.common.config', group='clients')
-        return getattr(cfg.CONF.clients, option)
 
     def create_stack_user(self, username, password=''):
         """

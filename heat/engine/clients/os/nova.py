@@ -57,7 +57,7 @@ class NovaClientPlugin(client_plugin.ClientPlugin):
         computeshell = novashell.OpenStackComputeShell()
         extensions = computeshell._discover_extensions("1.1")
 
-        endpoint_type = self._get_client_option('nova', 'endpoint_type')
+        endpoint_type = cfg.CONF.clients_nova.endpoint_type
         args = {
             'project_id': self.context.tenant,
             'auth_url': self.context.auth_url,
@@ -66,10 +66,9 @@ class NovaClientPlugin(client_plugin.ClientPlugin):
             'api_key': None,
             'extensions': extensions,
             'endpoint_type': endpoint_type,
-            'http_log_debug': self._get_client_option('nova',
-                                                      'http_log_debug'),
-            'cacert': self._get_client_option('nova', 'ca_file'),
-            'insecure': self._get_client_option('nova', 'insecure')
+            'http_log_debug': cfg.CONF.clients_nova.http_log_debug,
+            'cacert': cfg.CONF.clients_nova.ca_file,
+            'insecure': cfg.CONF.clients_nova.insecure,
         }
 
         client = nc.Client(1.1, **args)

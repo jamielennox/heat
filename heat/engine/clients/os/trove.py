@@ -13,6 +13,7 @@
 
 from troveclient import client as tc
 from troveclient.openstack.common.apiclient import exceptions
+from oslo.config import cfg
 
 from heat.common import exception
 from heat.engine.clients import client_plugin
@@ -25,15 +26,15 @@ class TroveClientPlugin(client_plugin.ClientPlugin):
     def _create(self):
 
         con = self.context
-        endpoint_type = self._get_client_option('trove', 'endpoint_type')
+        endpoint_type = cfg.CONF.clients_trove.endpoint_type
         args = {
             'service_type': 'database',
             'auth_url': con.auth_url or '',
             'proxy_token': con.auth_token,
             'username': None,
             'password': None,
-            'cacert': self._get_client_option('trove', 'ca_file'),
-            'insecure': self._get_client_option('trove', 'insecure'),
+            'cacert': cfg.CONF.clients_trove.ca_file,
+            'insecure': cfg.CONF.clients_trove.insecure,
             'endpoint_type': endpoint_type
         }
 

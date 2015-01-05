@@ -13,6 +13,7 @@
 
 from glanceclient import client as gc
 from glanceclient import exc
+from oslo.config import cfg
 from oslo.utils import uuidutils
 
 from heat.common import exception
@@ -32,7 +33,7 @@ class GlanceClientPlugin(client_plugin.ClientPlugin):
     def _create(self):
 
         con = self.context
-        endpoint_type = self._get_client_option('glance', 'endpoint_type')
+        endpoint_type = cfg.CONF.clients_glance.endpoint_type
         endpoint = self.url_for(service_type='image',
                                 endpoint_type=endpoint_type)
         args = {
@@ -41,10 +42,10 @@ class GlanceClientPlugin(client_plugin.ClientPlugin):
             'project_id': con.tenant,
             'token': self.auth_token,
             'endpoint_type': endpoint_type,
-            'cacert': self._get_client_option('glance', 'ca_file'),
-            'cert_file': self._get_client_option('glance', 'cert_file'),
-            'key_file': self._get_client_option('glance', 'key_file'),
-            'insecure': self._get_client_option('glance', 'insecure')
+            'cacert': cfg.CONF.clients_glance.ca_file,
+            'cert_file': cfg.CONF.clients_glance.cert_file,
+            'key_file': cfg.CONF.clients_glance.key_file,
+            'insecure': cfg.CONF.clients_glance.insecure,
         }
 
         return gc.Client('1', endpoint, **args)

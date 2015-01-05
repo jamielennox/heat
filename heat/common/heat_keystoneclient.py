@@ -162,6 +162,7 @@ class KeystoneClientV3(object):
             'auth_url': self.v3_endpoint,
             'endpoint': self.v3_endpoint
         }
+
         # Note try trust_id first, as we can't reuse auth_token in that case
         if self.context.trust_id is not None:
             # We got a trust_id, so we use the admin credentials
@@ -247,23 +248,11 @@ class KeystoneClientV3(object):
         return creds
 
     def _ssl_options(self):
-        opts = {'cacert': self._get_client_option('ca_file'),
-                'insecure': self._get_client_option('insecure'),
-                'cert': self._get_client_option('cert_file'),
-                'key': self._get_client_option('key_file')}
+        opts = {'cacert': cfg.CONF.clients_keystone.ca_file,
+                'insecure': cfg.CONF.clients_keystone.insecure,
+                'cert': cfg.CONF.clients_keystone.cert_file,
+                'key': cfg.CONF.clients_keystone.key_file}
         return opts
-
-    def _get_client_option(self, option):
-        # look for the option in the [clients_keystone] section
-        # unknown options raise cfg.NoSuchOptError
-        cfg.CONF.import_opt(option, 'heat.common.config',
-                            group='clients_keystone')
-        v = getattr(cfg.CONF.clients_keystone, option)
-        if v is not None:
-            return v
-        # look for the option in the generic [clients] section
-        cfg.CONF.import_opt(option, 'heat.common.config', group='clients')
-        return getattr(cfg.CONF.clients, option)
 
     def create_trust_context(self):
         """Create a trust using the trustor identity in the current context.

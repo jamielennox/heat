@@ -184,44 +184,6 @@ auth_password_opts = [
                        'multi_cloud is enabled. At least one endpoint needs '
                        'to be specified.'))]
 
-# these options define baseline defaults that apply to all clients
-default_clients_opts = [
-    cfg.StrOpt('endpoint_type',
-               default='publicURL',
-               help=_(
-                   'Type of endpoint in Identity service catalog to use '
-                   'for communication with the OpenStack service.')),
-    cfg.StrOpt('ca_file',
-               help=_('Optional CA cert file to use in SSL connections.')),
-    cfg.StrOpt('cert_file',
-               help=_('Optional PEM-formatted certificate chain file.')),
-    cfg.StrOpt('key_file',
-               help=_('Optional PEM-formatted file that contains the '
-                      'private key.')),
-    cfg.BoolOpt('insecure',
-                default=False,
-                help=_("If set, then the server's certificate will not "
-                       "be verified."))]
-
-# these options can be defined for each client
-# they must not specify defaults, since any options not defined in a client
-# specific group is looked up on the generic group above
-clients_opts = [
-    cfg.StrOpt('endpoint_type',
-               help=_(
-                   'Type of endpoint in Identity service catalog to use '
-                   'for communication with the OpenStack service.')),
-    cfg.StrOpt('ca_file',
-               help=_('Optional CA cert file to use in SSL connections.')),
-    cfg.StrOpt('cert_file',
-               help=_('Optional PEM-formatted certificate chain file.')),
-    cfg.StrOpt('key_file',
-               help=_('Optional PEM-formatted file that contains the '
-                      'private key.')),
-    cfg.BoolOpt('insecure',
-                help=_("If set, then the server's certificate will not "
-                       "be verified."))]
-
 heat_client_opts = [
     cfg.StrOpt('url',
                default='',
@@ -242,6 +204,27 @@ revision_opts = [
                       'separately, you can move this section to a different '
                       'file and add it as another config option.'))]
 
+_CLIENTS = ('nova', 'swift', 'neutron', 'cinder',
+            'ceilometer', 'keystone', 'heat', 'glance', 'trove')
+
+
+def clients_opts():
+    return [
+        cfg.StrOpt('endpoint_type',
+                   help=_(
+                       'Type of endpoint in Identity service catalog to use '
+                       'for communication with the OpenStack service.')),
+        cfg.StrOpt('ca_file',
+                   help=_('Optional CA cert file to use in SSL connections.')),
+        cfg.StrOpt('cert_file',
+                   help=_('Optional PEM-formatted certificate chain file.')),
+        cfg.StrOpt('key_file',
+                   help=_('Optional PEM-formatted file that contains the '
+                          'private key.')),
+        cfg.BoolOpt('insecure',
+                    help=_("If set, then the server's certificate will not "
+                           "be verified."))]
+
 
 def list_opts():
     yield None, rpc_opts
@@ -251,16 +234,34 @@ def list_opts():
     yield auth_password_group.name, auth_password_opts
     yield revision_group.name, revision_opts
     yield profiler_group.name, profiler_opts
-    yield 'clients', default_clients_opts
+    default_opts = clients_opts()
+    cfg.set_defaults(default_opts, insecure=False, endpoint_type='publicURL')
+    yield 'clients', default_opts
 
-    for client in ('nova', 'swift', 'neutron', 'cinder',
-                   'ceilometer', 'keystone', 'heat', 'glance', 'trove'):
+    client_specific_opts = clients_opts()
+    for client in _CLIENTS:
         client_specific_group = 'clients_' + client
-        yield client_specific_group, clients_opts
+        yield client_specific_group, client_specific_opts
 
     yield 'clients_heat', heat_client_opts
     yield 'clients_nova', client_http_log_debug_opts
     yield 'clients_cinder', client_http_log_debug_opts
+
+
+def _reset_defaults():
+    """Set the default values for the individual clients from the common.
+
+    This will only ever need to be called once in normal runs, however in tests
+    calling CONF.reset() resets all the default values, so we have to run it
+    for each test run as well.
+    """
+    opts = clients_opts()
+
+    for client in _CLIENTS:
+        for opt in opts:
+            cfg.CONF.set_default(opt.name,
+                                 cfg.CONF.clients[opt.name],
+                                 'clients_' + client)
 
 
 cfg.CONF.register_group(paste_deploy_group)
@@ -270,6 +271,8 @@ cfg.CONF.register_group(profiler_group)
 
 for group, opts in list_opts():
     cfg.CONF.register_opts(opts, group=group)
+
+_reset_defaults()
 
 
 def _get_deployment_flavor():

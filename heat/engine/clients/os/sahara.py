@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from oslo.config import cfg
 from saharaclient.api import base as sahara_base
 from saharaclient import client as sahara_client
 
@@ -25,7 +26,7 @@ class SaharaClientPlugin(client_plugin.ClientPlugin):
 
     def _create(self):
         con = self.context
-        endpoint_type = self._get_client_option('sahara', 'endpoint_type')
+        endpoint_type = cfg.CONF.clients_sahara.endpoint_type
         endpoint = self.url_for(service_type='data_processing',
                                 endpoint_type=endpoint_type)
         args = {

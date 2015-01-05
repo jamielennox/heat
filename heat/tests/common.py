@@ -24,6 +24,7 @@ from oslotest import mockpatch
 import testscenarios
 import testtools
 
+from heat.common import config
 from heat.common import messaging
 from heat.engine.clients.os import cinder
 from heat.engine.clients.os import glance
@@ -82,6 +83,7 @@ class HeatTestCase(testscenarios.WithScenarios,
         def enable_sleep():
             scheduler.ENABLE_SLEEP = True
 
+        config._reset_defaults()
         self.addCleanup(enable_sleep)
 
         mod_dir = os.path.dirname(sys.modules[__name__].__file__)

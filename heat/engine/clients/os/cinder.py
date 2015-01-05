@@ -16,6 +16,7 @@ import logging
 from cinderclient import client as cc
 from cinderclient import exceptions
 from keystoneclient import exceptions as ks_exceptions
+from oslo.config import cfg
 
 from heat.common import exception
 from heat.common.i18n import _
@@ -34,7 +35,7 @@ class CinderClientPlugin(client_plugin.ClientPlugin):
     def get_volume_api_version(self):
         '''Returns the most recent API version.'''
 
-        endpoint_type = self._get_client_option('cinder', 'endpoint_type')
+        endpoint_type = cfg.CONF.clients_cinder.endpoint_type
         try:
             self.url_for(service_type='volumev2', endpoint_type=endpoint_type)
             return 2
@@ -62,7 +63,7 @@ class CinderClientPlugin(client_plugin.ClientPlugin):
         LOG.info(_LI('Creating Cinder client with volume API version %d.'),
                  volume_api_version)
 
-        endpoint_type = self._get_client_option('cinder', 'endpoint_type')
+        endpoint_type = cfg.CONF.clients_cinder.endpoint_type
         args = {
             'service_type': service_type,
             'auth_url': con.auth_url or '',
@@ -70,10 +71,9 @@ class CinderClientPlugin(client_plugin.ClientPlugin):
             'username': None,
             'api_key': None,
             'endpoint_type': endpoint_type,
-            'http_log_debug': self._get_client_option('cinder',
-                                                      'http_log_debug'),
-            'cacert': self._get_client_option('cinder', 'ca_file'),
-            'insecure': self._get_client_option('cinder', 'insecure')
+            'http_log_debug': cfg.CONF.clients_cinder.http_log_debug,
+            'cacert': cfg.CONF.clients_cinder.ca_file,
+            'insecure': cfg.CONF.clients_cinder.insecure,
         }
 
         client = cc.Client(client_version, **args)

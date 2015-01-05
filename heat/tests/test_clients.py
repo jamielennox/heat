@@ -27,6 +27,7 @@ import mock
 from oslo.config import cfg
 from testtools import testcase
 
+from heat.common import config
 from heat.engine import clients
 from heat.engine.clients import client_plugin
 from heat.tests import common
@@ -42,18 +43,17 @@ class ClientsTest(common.HeatTestCase):
         c = clients.Clients(con)
         con.clients = c
 
+        cfg.CONF.set_override('url', None, group='clients_heat')
         obj = c.client_plugin('heat')
-        obj._get_client_option = mock.Mock()
-        obj._get_client_option.return_value = None
         obj.url_for = mock.Mock(name="url_for")
         obj.url_for.return_value = "url_from_keystone"
         self.assertEqual("url_from_keystone", obj.get_heat_url())
         heat_url = "http://0.0.0.0:8004/v1/%(tenant_id)s"
-        obj._get_client_option.return_value = heat_url
+        cfg.CONF.set_override('url', heat_url, group='clients_heat')
         tenant_id = "b363706f891f48019483f8bd6503c54b"
         result = heat_url % {"tenant_id": tenant_id}
         self.assertEqual(result, obj.get_heat_url())
-        obj._get_client_option.return_value = result
+        cfg.CONF.set_override('url', result, group='clients_heat')
         self.assertEqual(result, obj.get_heat_url())
 
     @mock.patch.object(heatclient, 'Client')
@@ -140,8 +140,6 @@ class ClientPluginTest(common.HeatTestCase):
         c = clients.Clients(con)
         con.clients = c
 
-        plugin = FooClientsPlugin(con)
-
         cfg.CONF.set_override('ca_file', '/tmp/bar',
                               group='clients_heat')
         cfg.CONF.set_override('ca_file', '/tmp/foo',
@@ -149,17 +147,13 @@ class ClientPluginTest(common.HeatTestCase):
         cfg.CONF.set_override('endpoint_type', 'internalURL',
                               group='clients')
 
+        config._reset_defaults()
+
         # check heat group
-        self.assertEqual('/tmp/bar',
-                         plugin._get_client_option('heat', 'ca_file'))
+        self.assertEqual('/tmp/bar', cfg.CONF.clients_heat.ca_file)
 
         # check fallback clients group for known client
-        self.assertEqual('internalURL',
-                         plugin._get_client_option('glance', 'endpoint_type'))
-
-        # check fallback clients group for unknown client foo
-        self.assertEqual('/tmp/foo',
-                         plugin._get_client_option('foo', 'ca_file'))
+        self.assertEqual('internalURL', cfg.CONF.clients_glance.endpoint_type)
 
     def test_auth_token(self):
         con = mock.Mock()

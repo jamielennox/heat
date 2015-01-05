@@ -14,6 +14,7 @@
 from ceilometerclient import client as cc
 from ceilometerclient import exc
 from ceilometerclient.openstack.common.apiclient import exceptions as api_exc
+from oslo.config import cfg
 
 from heat.engine.clients import client_plugin
 
@@ -25,7 +26,7 @@ class CeilometerClientPlugin(client_plugin.ClientPlugin):
     def _create(self):
 
         con = self.context
-        endpoint_type = self._get_client_option('ceilometer', 'endpoint_type')
+        endpoint_type = cfg.CONF.clients_ceilometer.endpoint_type
         endpoint = self.url_for(service_type='metering',
                                 endpoint_type=endpoint_type)
         args = {
@@ -34,10 +35,10 @@ class CeilometerClientPlugin(client_plugin.ClientPlugin):
             'project_id': con.tenant,
             'token': lambda: self.auth_token,
             'endpoint_type': endpoint_type,
-            'cacert': self._get_client_option('ceilometer', 'ca_file'),
-            'cert_file': self._get_client_option('ceilometer', 'cert_file'),
-            'key_file': self._get_client_option('ceilometer', 'key_file'),
-            'insecure': self._get_client_option('ceilometer', 'insecure')
+            'cacert': cfg.CONF.clients_ceilometer.ca_file,
+            'cert_file': cfg.CONF.clients_ceilometer.cert_file,
+            'key_file': cfg.CONF.clients_ceilometer.key_file,
+            'insecure': cfg.CONF.clients_ceilometer.insecure,
         }
 
         return cc.Client('2', endpoint, **args)

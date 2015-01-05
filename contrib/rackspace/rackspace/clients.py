@@ -141,15 +141,15 @@ class RackspaceTroveClient(trove.TroveClientPlugin):
     def _create(self):
         service_type = "rax:database"
         con = self.context
-        endpoint_type = self._get_client_option('trove', 'endpoint_type')
+        endpoint_type = cfg.CONF.clients_trove.endpoint_type
         args = {
             'service_type': service_type,
             'auth_url': con.auth_url,
             'proxy_token': con.auth_token,
             'username': None,
             'password': None,
-            'cacert': self._get_client_option('trove', 'ca_file'),
-            'insecure': self._get_client_option('trove', 'insecure'),
+            'cacert': cfg.CONF.clients_trove.ca_file,
+            'insecure': cfg.CONF.clients_trove.insecure,
             'endpoint_type': endpoint_type
         }
 
@@ -228,7 +228,7 @@ class RackspaceGlanceClient(glance.GlanceClientPlugin):
 
     def _create(self):
         con = self.context
-        endpoint_type = self._get_client_option('glance', 'endpoint_type')
+        endpoint_type = cfg.CONF.clients_glance.endpoint_type
         endpoint = self.url_for(
             service_type='image',
             endpoint_type=endpoint_type,
@@ -244,9 +244,9 @@ class RackspaceGlanceClient(glance.GlanceClientPlugin):
             'project_id': con.tenant,
             'token': self.auth_token,
             'endpoint_type': endpoint_type,
-            'ca_file': self._get_client_option('glance', 'ca_file'),
-            'cert_file': self._get_client_option('glance', 'cert_file'),
-            'key_file': self._get_client_option('glance', 'key_file'),
-            'insecure': self._get_client_option('glance', 'insecure')
+            'ca_file': cfg.CONF.clients_glance.ca_file,
+            'cert_file': cfg.CONF.clients_glance.cert_file,
+            'key_file': cfg.CONF.clients_glance.key_file,
+            'insecure': cfg.CONF.clients_glance.insecure,
         }
         return gc.Client('2', endpoint, **args)

@@ -11,6 +11,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo.config import cfg
 from heat.engine.clients import client_plugin
 
 
@@ -24,7 +25,7 @@ class BarbicanClientPlugin(client_plugin.ClientPlugin):
 
     def _create(self):
         keystone_client = self.clients.client('keystone').client
-        endpoint_type = self._get_client_option('barbican', 'endpoint_type')
+        endpoint_type = cfg.CONF.clients_barbican.endpoint_type
         endpoint = self.url_for(service_type='key-manager',
                                 endpoint_type=endpoint_type)
         # Remove version if set

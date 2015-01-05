@@ -11,6 +11,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo.config import cfg
+
 from heatclient import client as hc
 from heatclient import exc
 
@@ -27,14 +29,14 @@ class HeatClientPlugin(client_plugin.ClientPlugin):
             'token': self.auth_token,
             'username': None,
             'password': None,
-            'ca_file': self._get_client_option('heat', 'ca_file'),
-            'cert_file': self._get_client_option('heat', 'cert_file'),
-            'key_file': self._get_client_option('heat', 'key_file'),
-            'insecure': self._get_client_option('heat', 'insecure')
+            'ca_file': cfg.CONF.clients_heat.ca_file,
+            'cert_file': cfg.CONF.clients_heat.cert_file,
+            'key_file': cfg.CONF.clients_heat.key_file,
+            'insecure': cfg.CONF.clients_heat.insecure,
         }
 
         endpoint = self.get_heat_url()
-        if self._get_client_option('heat', 'url'):
+        if cfg.CONF.clients_heat.url:
             # assume that the heat API URL is manually configured because
             # it is not in the keystone catalog, so include the credentials
             # for the standalone auth_password middleware
@@ -54,12 +56,12 @@ class HeatClientPlugin(client_plugin.ClientPlugin):
         return isinstance(ex, exc.HTTPConflict)
 
     def get_heat_url(self):
-        heat_url = self._get_client_option('heat', 'url')
+        heat_url = cfg.CONF.clients_heat.url
         if heat_url:
             tenant_id = self.context.tenant_id
             heat_url = heat_url % {'tenant_id': tenant_id}
         else:
-            endpoint_type = self._get_client_option('heat', 'endpoint_type')
+            endpoint_type = cfg.CONF.clients_heat.endpoint_type
             heat_url = self.url_for(service_type='orchestration',
                                     endpoint_type=endpoint_type)
         return heat_url

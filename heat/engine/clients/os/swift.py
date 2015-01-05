@@ -16,6 +16,7 @@ import random
 import time
 import urlparse
 
+from oslo.config import cfg
 from swiftclient import client as sc
 from swiftclient import exceptions
 from swiftclient import utils as swiftclient_utils
@@ -34,7 +35,7 @@ class SwiftClientPlugin(client_plugin.ClientPlugin):
     def _create(self):
 
         con = self.context
-        endpoint_type = self._get_client_option('swift', 'endpoint_type')
+        endpoint_type = cfg.CONF.clients_swift.endpoint_type
         args = {
             'auth_version': '2.0',
             'tenant_name': con.tenant,
@@ -45,8 +46,8 @@ class SwiftClientPlugin(client_plugin.ClientPlugin):
             'preauthurl': self.url_for(service_type='object-store',
                                        endpoint_type=endpoint_type),
             'os_options': {'endpoint_type': endpoint_type},
-            'cacert': self._get_client_option('swift', 'ca_file'),
-            'insecure': self._get_client_option('swift', 'insecure')
+            'cacert': cfg.CONF.clients_swift.ca_file,
+            'insecure': cfg.CONF.clients_swift.insecure,
         }
         return sc.Connection(**args)
 

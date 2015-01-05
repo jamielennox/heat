@@ -14,6 +14,7 @@
 from neutronclient.common import exceptions
 from neutronclient.neutron import v2_0 as neutronV20
 from neutronclient.v2_0 import client as nc
+from oslo.config import cfg
 from oslo.utils import uuidutils
 
 from heat.common import exception
@@ -29,7 +30,7 @@ class NeutronClientPlugin(client_plugin.ClientPlugin):
 
         con = self.context
 
-        endpoint_type = self._get_client_option('neutron', 'endpoint_type')
+        endpoint_type = cfg.CONF.clients_neutron.endpoint_type
         endpoint = self.url_for(service_type='network',
                                 endpoint_type=endpoint_type)
 
@@ -39,8 +40,8 @@ class NeutronClientPlugin(client_plugin.ClientPlugin):
             'token': self.auth_token,
             'endpoint_url': endpoint,
             'endpoint_type': endpoint_type,
-            'ca_cert': self._get_client_option('neutron', 'ca_file'),
-            'insecure': self._get_client_option('neutron', 'insecure')
+            'ca_cert': cfg.CONF.clients_neutron.ca_file,
+            'insecure': cfg.CONF.clients_neutron.insecure,
         }
 
         return nc.Client(**args)
