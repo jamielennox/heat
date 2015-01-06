@@ -21,6 +21,7 @@ from heat.engine.clients import client_plugin
 
 class HeatClientPlugin(client_plugin.ClientPlugin):
 
+    name = 'heat'
     exceptions_module = exc
 
     def _create(self):

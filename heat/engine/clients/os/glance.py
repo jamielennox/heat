@@ -28,6 +28,7 @@ LOG = logging.getLogger(__name__)
 
 class GlanceClientPlugin(client_plugin.ClientPlugin):
 
+    name = 'glance'
     exceptions_module = exc
 
     def _create(self):

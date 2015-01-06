@@ -30,6 +30,7 @@ MAX_EPOCH = 2147483647
 
 class SwiftClientPlugin(client_plugin.ClientPlugin):
 
+    name = 'swift'
     exceptions_module = exceptions
 
     def _create(self):

@@ -24,6 +24,7 @@ from heat.engine import constraints
 
 class NeutronClientPlugin(client_plugin.ClientPlugin):
 
+    name = 'neutron'
     exceptions_module = exceptions
 
     def _create(self):

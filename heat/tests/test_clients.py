@@ -32,6 +32,7 @@ from heat.engine import clients
 from heat.engine.clients import client_plugin
 from heat.tests import common
 from heat.tests import utils
+from heat.tests import fakes
 from heat.tests.v1_1 import fakes as fakes_v1_1
 
 
@@ -74,11 +75,12 @@ class ClientsTest(common.HeatTestCase):
 
     @mock.patch.object(heatclient, 'Client')
     def test_clients_heat_no_auth_token(self, mock_call):
-        self.stub_keystoneclient(auth_token='anewtoken')
         con = mock.Mock()
         con.auth_url = "http://auth.example.com:5000/v2.0"
         con.tenant_id = "b363706f891f48019483f8bd6503c54b"
         con.auth_token = None
+        # con.trust_id = None
+        con.auth_plugin = fakes.FakeAuth(auth_token='anewtoken')
         c = clients.Clients(con)
         con.clients = c
 
@@ -89,7 +91,7 @@ class ClientsTest(common.HeatTestCase):
 
     @mock.patch.object(heatclient, 'Client')
     def test_clients_heat_cached(self, mock_call):
-        self.stub_keystoneclient()
+        self.stub_auth()
         con = mock.Mock()
         con.auth_url = "http://auth.example.com:5000/v2.0"
         con.tenant_id = "b363706f891f48019483f8bd6503c54b"
@@ -108,7 +110,7 @@ class ClientsTest(common.HeatTestCase):
         self.assertEqual(heat, heat_cached)
 
     def test_clients_auth_token_update(self):
-        fkc = self.stub_keystoneclient(auth_token='token1')
+        fkc = self.stub_auth(auth_token='token1')
         con = mock.Mock()
         con.auth_url = "http://auth.example.com:5000/v2.0"
         con.trust_id = "b363706f891f48019483f8bd6503c54b"
@@ -688,19 +690,19 @@ class TestIsNotFound(common.HeatTestCase):
 class ClientAPIVersionTest(common.HeatTestCase):
 
     def test_cinder_api_v1_and_v2(self):
-        self.stub_keystoneclient()
+        self.stub_auth()
         ctx = utils.dummy_context()
         client = clients.Clients(ctx).client('cinder')
         self.assertEqual(2, client.volume_api_version)
 
     def test_cinder_api_v1_only(self):
-        self.stub_keystoneclient(only_services=['volume'])
+        self.stub_auth(only_services=['volume'])
         ctx = utils.dummy_context()
         client = clients.Clients(ctx).client('cinder')
         self.assertEqual(1, client.volume_api_version)
 
     def test_cinder_api_v2_only(self):
-        self.stub_keystoneclient(only_services=['volumev2'])
+        self.stub_auth(only_services=['volumev2'])
         ctx = utils.dummy_context()
         client = clients.Clients(ctx).client('cinder')
         self.assertEqual(2, client.volume_api_version)

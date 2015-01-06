@@ -51,6 +51,7 @@ class NovaClientPlugin(client_plugin.ClientPlugin):
                                 'SUSPENDED',
                                 'VERIFY_RESIZE']
 
+    name = 'nova'
     exceptions_module = exceptions
 
     def _create(self):

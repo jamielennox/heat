@@ -21,6 +21,7 @@ from heat.engine.clients import client_plugin
 
 class CeilometerClientPlugin(client_plugin.ClientPlugin):
 
+    name = 'ceilometer'
     exceptions_module = [exc, api_exc]
 
     def _create(self):

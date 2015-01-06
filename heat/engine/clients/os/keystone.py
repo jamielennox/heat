@@ -19,6 +19,7 @@ from heat.engine.clients import client_plugin
 
 class KeystoneClientPlugin(client_plugin.ClientPlugin):
 
+    name = 'keystone'
     exceptions_module = exceptions
 
     def _create(self):

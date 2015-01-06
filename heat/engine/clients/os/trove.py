@@ -21,6 +21,7 @@ from heat.engine.clients import client_plugin
 
 class TroveClientPlugin(client_plugin.ClientPlugin):
 
+    name = 'trove'
     exceptions_module = exceptions
 
     def _create(self):

@@ -20,6 +20,7 @@ places where actual behavior differs from the spec.
 """
 
 from keystoneclient import exceptions
+from keystoneclient import auth
 
 from heat.common import context
 
@@ -77,26 +78,39 @@ class FakeClient(object):
         pass
 
 
+class FakeAuth(auth.BaseAuthPlugin):
+
+    def __init__(self, auth_token='abcd1234', only_services=None):
+        self.auth_token = auth_token
+        self.only_services = only_services
+
+    def get_token(self, session, **kwargs):
+        return self.auth_token
+
+    def get_endpoint(self, session, service_type=None, **kwargs):
+        if (self.only_services is not None and
+                service_type not in self.only_services):
+            return None
+
+        return 'http://example.com:1234/v1'
+
+
 class FakeKeystoneClient(object):
     def __init__(self, username='test_user', password='apassword',
                  user_id='1234', access='4567', secret='8901',
-                 credential_id='abcdxyz', auth_token='abcd1234',
-                 only_services=None):
+                 credential_id='abcdxyz'):
         self.username = username
         self.password = password
         self.user_id = user_id
         self.access = access
         self.secret = secret
         self.credential_id = credential_id
-        self.only_services = only_services
 
         class FakeCred(object):
             id = self.credential_id
             access = self.access
             secret = self.secret
         self.creds = FakeCred()
-
-        self.auth_token = auth_token
 
     def create_stack_user(self, username, password=''):
         self.username = username

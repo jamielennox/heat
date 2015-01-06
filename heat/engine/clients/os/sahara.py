@@ -22,6 +22,7 @@ from heat.engine.clients import client_plugin
 
 class SaharaClientPlugin(client_plugin.ClientPlugin):
 
+    name = 'sahara'
     exceptions_module = sahara_base
 
     def _create(self):

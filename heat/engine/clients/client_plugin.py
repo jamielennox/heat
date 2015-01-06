@@ -14,6 +14,44 @@
 import abc
 import six
 
+from keystoneclient.auth.identity import base
+from keystoneclient import session
+from oslo.config import cfg
+
+
+# FIXME(jamielennox): I copied this out of a review that is proposed against
+# keystoneclient which can be used when available.
+class _AccessInfoPlugin(base.BaseIdentityPlugin):
+    """A plugin that turns an existing AccessInfo object into a usable plugin.
+
+    In certain circumstances you already have an auth_ref/AccessInfo object
+    that you just want to reuse. This could have been from a cache, in
+    auth_token middleware or other.
+
+    Turn that existing object into a simple identity plugin. This plugin cannot
+    be refreshed as the AccessInfo object does not contain any authorizing
+    information.
+
+    :param auth_ref: the existing AccessInfo object.
+    :type auth_ref: keystoneclient.access.AccessInfo
+    :param auth_url: the url where this AccessInfo was retrieved from. Required
+                     if using the AUTH_INTERFACE with get_endpoint. (optional)
+    """
+
+    def __init__(self, auth_url, auth_ref):
+        super(_AccessInfoPlugin, self).__init__(auth_url=auth_url,
+                                                reauthenticate=False)
+        self.auth_ref = auth_ref
+
+    def get_auth_ref(self, session, **kwargs):
+        return self.auth_ref
+
+    def invalidate(self):
+        # NOTE(jamielennox): Don't allow the default invalidation to occur
+        # because on next authentication request we will only get the same
+        # auth_ref object again.
+        return False
+
 
 @six.add_metaclass(abc.ABCMeta)
 class ClientPlugin(object):
@@ -26,6 +64,7 @@ class ClientPlugin(object):
         self.context = context
         self.clients = context.clients
         self._client = None
+        self._session = None
 
     def client(self):
         if not self._client:
@@ -39,14 +78,36 @@ class ClientPlugin(object):
 
     @property
     def auth_token(self):
-        # Always use the auth_token from the keystone client, as
-        # this may be refreshed if the context contains credentials
-        # which allow reissuing of a new token before the context
-        # auth_token expiry (e.g trust_id or username/password)
-        return self.clients.client('keystone').auth_token
+        # NOTE(jamielennox): use the session defined by the keystoneclient
+        # options as traditionally the token was always retrieved from
+        # keystoneclient.
+        return self.context.auth_plugin.get_token(self.get_session('keystone'))
 
     def url_for(self, **kwargs):
-        return self.clients.client('keystone').url_for(**kwargs)
+        # NOTE(jamielennox): use the session defined by the keystoneclient
+        # options as traditionally the token was always retrieved from
+        # keystoneclient.
+
+        try:
+            kwargs['interface'] = kwargs.pop('endpoint_type')
+        except KeyError:
+            pass
+
+        session = self.get_session('keystone')
+        return self.context.auth_plugin.get_endpoint(session, **kwargs)
+
+    def get_session(self, name):
+        if not self._session:
+            group = 'clients_%s' % name
+
+            self._session = session.Session.construct({
+                'cacert': cfg.CONF[group].ca_file,
+                'cert': cfg.CONF[group].cert_file,
+                'key': cfg.CONF[group].key_file,
+                'insecure': cfg.CONF[group].insecure,
+            })
+
+        return self._session
 
     def is_client_exception(self, ex):
         '''Returns True if the current exception comes from the client.'''
