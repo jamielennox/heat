@@ -75,6 +75,8 @@ class KeystoneClientV3(object):
         self._admin_client = None
         self._domain_admin_client = None
 
+        self.session = session.Session.construct(self._ssl_options())
+
         if self.context.auth_url:
             self.v3_endpoint = self.context.auth_url.replace('v2.0', 'v3')
         else:
@@ -105,10 +107,10 @@ class KeystoneClientV3(object):
         if self.stack_domain:
             if not (self.domain_admin_user and self.domain_admin_password):
                 raise exception.Error(_('heat.conf misconfigured, cannot '
-                                        'specify "stack_user_domain_id" or '
-                                        '"stack_user_domain_name" without '
-                                        '"stack_domain_admin" and '
-                                        '"stack_domain_admin_password"'))
+                                      'specify "stack_user_domain_id" or '
+                                      '"stack_user_domain_name" without '
+                                      '"stack_domain_admin" and '
+                                      '"stack_domain_admin_password"'))
         else:
             LOG.warn(_LW('stack_user_domain_id or stack_user_domain_name not '
                          'set in heat.conf falling back to using default'))
@@ -158,68 +160,27 @@ class KeystoneClientV3(object):
         return self._domain_admin_client
 
     def _v3_client_init(self):
-        kwargs = {
-            'auth_url': self.v3_endpoint,
-            'endpoint': self.v3_endpoint
-        }
-        # Note try trust_id first, as we can't reuse auth_token in that case
-        if self.context.trust_id is not None:
-            # We got a trust_id, so we use the admin credentials
-            # to authenticate with the trust_id so we can use the
-            # trust impersonating the trustor user.
-            kwargs.update(self._service_admin_creds())
-            kwargs['trust_id'] = self.context.trust_id
-            kwargs.pop('project_name')
-        elif self.context.auth_token_info is not None:
-            # The auth_ref version must be set according to the token version
-            if 'access' in self.context.auth_token_info:
-                kwargs['auth_ref'] = copy.deepcopy(
-                    self.context.auth_token_info['access'])
-                kwargs['auth_ref']['version'] = 'v2.0'
-                kwargs['auth_ref']['token']['id'] = self.context.auth_token
-            elif 'token' in self.context.auth_token_info:
-                kwargs['auth_ref'] = copy.deepcopy(
-                    self.context.auth_token_info['token'])
-                kwargs['auth_ref']['version'] = 'v3'
-                kwargs['auth_ref']['auth_token'] = self.context.auth_token
-            else:
-                LOG.error(_LE('Unknown version in auth_token_info'))
-                raise exception.AuthorizationFailure(
-                    _('Unknown token version'))
-        elif self.context.auth_token is not None:
-            kwargs['token'] = self.context.auth_token
-            kwargs['project_id'] = self.context.tenant_id
-        elif self.context.password is not None:
-            kwargs['username'] = self.context.username
-            kwargs['password'] = self.context.password
-            kwargs['project_id'] = self.context.tenant_id
-        else:
-            LOG.error(_LE("Keystone v3 API connection failed, no password "
-                          "trust or auth_token!"))
-            raise exception.AuthorizationFailure()
-        kwargs.update(self._ssl_options())
-        client = kc_v3.Client(**kwargs)
+        client = kc_v3.Client(session=self.session,
+                              auth=self.context.auth_plugin)
 
-        # If auth_ref has already be specified via auth_token_info, don't
-        # authenticate as we want to reuse, rather than request a new token
-        if 'auth_ref' not in kwargs:
+        if hasattr(self.context.auth_plugin, 'get_access'):
+            # NOTE(jamielennox): get_access returns the current token without
+            # reauthenticating if it's present and valid.
             try:
-                client.authenticate()
+                auth_ref = self.context.auth_plugin.get_access(session)
             except kc_exception.Unauthorized:
                 LOG.error(_LE("Keystone client authentication failed"))
                 raise exception.AuthorizationFailure()
 
-        # If we are authenticating with a trust set the context auth_token
-        # with the trust scoped token
-        if 'trust_id' in kwargs:
-            # Sanity check
-            if not client.auth_ref.trust_scoped:
-                LOG.error(_LE("trust token re-scoping failed!"))
-                raise exception.AuthorizationFailure()
-            # Sanity check that impersonation is effective
-            if self.context.trustor_user_id != client.auth_ref.user_id:
-                LOG.error(_LE("Trust impersonation failed"))
-                raise exception.AuthorizationFailure()
+            if self.context.trust_id:
+                # Sanity check
+                if not auth_ref.trust_scoped:
+                    LOG.error(_LE("trust token re-scoping failed!"))
+                    raise exception.AuthorizationFailure()
+                # Sanity check that impersonation is effective
+                if self.context.trustor_user_id != auth_ref.user_id:
+                    LOG.error(_LE("Trust impersonation failed"))
+                    raise exception.AuthorizationFailure()
 
         return client
 
@@ -318,7 +279,7 @@ class KeystoneClientV3(object):
         if(len(username) > 64):
             LOG.warn(_LW("Truncating the username %s to the last 64 "
                          "characters."), username)
-        # get the last 64 characters of the username
+        #get the last 64 characters of the username
         return username[-64:]
 
     def _get_domain_id_from_name(self, domain_name):
