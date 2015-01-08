@@ -40,14 +40,23 @@ class ClientPlugin(object):
 
     @property
     def auth_token(self):
-        # Always use the auth_token from the keystone client, as
-        # this may be refreshed if the context contains credentials
-        # which allow reissuing of a new token before the context
-        # auth_token expiry (e.g trust_id or username/password)
-        return self.clients.client('keystone').auth_token
+        # NOTE(jamielennox): use the session defined by the keystoneclient
+        # options as traditionally the token was always retrieved from
+        # keystoneclient.
+        session = self.clients.client('keystone').session
+        return self.context.auth_plugin.get_token(session)
 
     def url_for(self, **kwargs):
-        return self.clients.client('keystone').url_for(**kwargs)
+        # NOTE(jamielennox): use the session defined by the keystoneclient
+        # options as traditionally the token was always retrieved from
+        # keystoneclient.
+        try:
+            kwargs['interface'] = kwargs.pop('endpoint_type')
+        except KeyError:
+            pass
+
+        session = self.clients.client('keystone').session
+        return self.context.auth_plugin.get_endpoint(session, **kwargs)
 
     def _get_client_option(self, client, option):
         # look for the option in the [clients_${client}] section
