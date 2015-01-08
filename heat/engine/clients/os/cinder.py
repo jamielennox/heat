@@ -15,7 +15,6 @@ import logging
 
 from cinderclient import client as cc
 from cinderclient import exceptions
-from keystoneclient import exceptions as ks_exceptions
 
 from heat.common import exception
 from heat.common.i18n import _
@@ -35,16 +34,10 @@ class CinderClientPlugin(client_plugin.ClientPlugin):
         '''Returns the most recent API version.'''
 
         endpoint_type = self._get_client_option('cinder', 'endpoint_type')
-        try:
-            self.url_for(service_type='volumev2', endpoint_type=endpoint_type)
-            return 2
-        except ks_exceptions.EndpointNotFound:
-            try:
-                self.url_for(service_type='volume',
-                             endpoint_type=endpoint_type)
-                return 1
-            except ks_exceptions.EndpointNotFound:
-                return None
+        for version, service_type in ((2, 'volumev2'), (1, 'volume')):
+            if self.url_for(service_type=service_type,
+                            interface=endpoint_type):
+                return version
 
     def _create(self):
 
