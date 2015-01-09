@@ -14,7 +14,6 @@
 """Keystone Client functionality for use by resources."""
 
 import collections
-import copy
 import json
 from oslo.utils import importutils
 import uuid
@@ -626,11 +625,11 @@ class KeystoneClientV3(object):
         default_region_name = (self.context.region_name or
                                cfg.CONF.region_name_for_services)
         kwargs.setdefault('region_name', default_region_name)
-        return self.client.service_catalog.url_for(**kwargs)
+        return self.context.auth_plugin.get_endpoint(self.session, **kwargs)
 
     @property
     def auth_token(self):
-        return self.client.auth_token
+        return self.context.auth_plugin.get_token(self.session)
 
 
 class KeystoneClient(object):
