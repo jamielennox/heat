@@ -176,15 +176,16 @@ class RequestContext(context.RequestContext):
                                trust_id=self.trust_id)
 
         if self.auth_token_info:
-            return _AccessInfoPlugin(self.auth_url, self.auth_token_info)
+            return _AccessInfoPlugin(self._keystone_v3_endpoint,
+                                     self.auth_token_info)
 
         if self.auth_token:
             # FIXME(jamielennox): This is broken but consistent. If you
             # only have a token but don't load a service catalog then
             # url_for wont work. Stub with the keystone endpoint so at
             # least it might be right.
-            return token_endpoint.Token(self._keystone_v3_endpoint,
-                                        self.auth_token)
+            return token_endpoint.Token(endpoint=self._keystone_v3_endpoint,
+                                        token=self.auth_token)
 
         if self.password:
             return v3.Password(username=self.username,

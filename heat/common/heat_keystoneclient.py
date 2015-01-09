@@ -166,7 +166,7 @@ class KeystoneClientV3(object):
             # NOTE(jamielennox): get_access returns the current token without
             # reauthenticating if it's present and valid.
             try:
-                auth_ref = self.context.auth_plugin.get_access(session)
+                auth_ref = self.context.auth_plugin.get_access(self.session)
             except kc_exception.Unauthorized:
                 LOG.error(_LE("Keystone client authentication failed"))
                 raise exception.AuthorizationFailure()
@@ -355,7 +355,7 @@ class KeystoneClientV3(object):
                                        password=password,
                                        project_id=project_id,
                                        user_domain_name=self.stack_domain)
-        sess = session.Session(auth=auth)
+
         # Note we do this directly via a post as there's currently
         # no way to get a nocatalog token via keystoneclient
         token_url = "%s/auth/tokens?nocatalog" % self.v3_endpoint
@@ -370,8 +370,8 @@ class KeystoneClientV3(object):
                              'domain': domain,
                              'password': password, 'name': username}},
                              'methods': ['password']}}}
-        t = sess.post(token_url, headers=headers, json=body,
-                      authenticated=False)
+        t = self.session.post(token_url, headers=headers,
+                              json=body, authenticated=False)
         return t.headers['X-Subject-Token']
 
     def create_stack_domain_user(self, username, project_id, password=None):
