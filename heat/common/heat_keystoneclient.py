@@ -71,7 +71,7 @@ class KeystoneClientV3(object):
         #   path, we will work with either a v2.0 or v3 path
         self.context = context
         self._client = None
-        self._admin_client = None
+        self._admin_auth = None
         self._domain_admin_client = None
 
         self.session = session.Session.construct(self._ssl_options())
@@ -123,19 +123,18 @@ class KeystoneClientV3(object):
         return self._client
 
     @property
-    def admin_client(self):
-        if not self._admin_client:
-            # Create admin client connection to v3 API
-            admin_creds = self._service_admin_creds()
-            admin_creds.update(self._ssl_options())
-            c = kc_v3.Client(**admin_creds)
-            try:
-                c.authenticate()
-                self._admin_client = c
-            except kc_exception.Unauthorized:
-                LOG.error(_LE("Admin client authentication failed"))
-                raise exception.AuthorizationFailure()
-        return self._admin_client
+    def admin_auth(self):
+        if not self._admin_auth:
+            importutils.import_module('keystonemiddleware.auth_token')
+
+            self._admin_auth = kc_auth_v3.Password(
+                username=cfg.CONF.keystone_authtoken.admin_user,
+                password=cfg.CONF.keystone_authtoken.admin_password,
+                user_domain_id='default',
+                auth_url=self.v3_endpoint,
+                project_name=cfg.CONF.keystone_authtoken.admin_tenant_name)
+
+        return self._admin_auth
 
     @property
     def domain_admin_client(self):
@@ -191,17 +190,6 @@ class KeystoneClientV3(object):
 
         return client
 
-    def _service_admin_creds(self):
-        # Import auth_token to have keystone_authtoken settings setup.
-        importutils.import_module('keystonemiddleware.auth_token')
-        creds = {
-            'username': cfg.CONF.keystone_authtoken.admin_user,
-            'password': cfg.CONF.keystone_authtoken.admin_password,
-            'auth_url': self.v3_endpoint,
-            'endpoint': self.v3_endpoint,
-            'project_name': cfg.CONF.keystone_authtoken.admin_tenant_name}
-        return creds
-
     def _ssl_options(self):
         opts = {'cacert': self._get_client_option('ca_file'),
                 'insecure': self._get_client_option('insecure'),
@@ -237,30 +225,39 @@ class KeystoneClientV3(object):
         # We need the service admin user ID (not name), as the trustor user
         # can't lookup the ID in keystoneclient unless they're admin
         # workaround this by getting the user_id from admin_client
-        trustee_user_id = self.admin_client.auth_ref.user_id
-        trustor_user_id = self.client.auth_ref.user_id
-        trustor_project_id = self.client.auth_ref.project_id
+
+        # NOTE(jamielennox): These should use the plugin get_user_id and
+        # get_project_id that will be available in the v1.1 keystoneclient
+
+        try:
+            trustee = self.admin_auth.get_access(self.session)
+        except kc_exception.Unauthorized:
+            LOG.error(_LE("Domain admin client authentication failed"))
+            raise exception.AuthorizationFailure()
+
+        trustor = self.context.auth_plugin.get_access(self.session)
+
         # inherit the roles of the trustor, unless set trusts_delegated_roles
         if cfg.CONF.trusts_delegated_roles:
             roles = cfg.CONF.trusts_delegated_roles
         else:
             roles = self.context.roles
         try:
-            trust = self.client.trusts.create(trustor_user=trustor_user_id,
-                                              trustee_user=trustee_user_id,
-                                              project=trustor_project_id,
+            trust = self.client.trusts.create(trustor_user=trustor.user_id,
+                                              trustee_user=trustee.user_id,
+                                              project=trustor.project_id,
                                               impersonation=True,
                                               role_names=roles)
         except kc_exception.NotFound:
             LOG.debug("Failed to find roles %s for user %s"
-                      % (roles, trustor_user_id))
+                      % (roles, trustor.user_id))
             raise exception.MissingCredentialError(
                 required=_("roles %s") % roles)
 
         trust_context = context.RequestContext.from_dict(
             self.context.to_dict())
         trust_context.trust_id = trust.id
-        trust_context.trustor_user_id = trustor_user_id
+        trust_context.trustor_user_id = trustor.user_id
         return trust_context
 
     def delete_trust(self, trust_id):
