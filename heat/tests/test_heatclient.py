@@ -91,23 +91,22 @@ class KeystoneClientTest(common.HeatTestCase):
             self.mock_admin_client.authenticate().AndRaise(
                 kc_exception.Unauthorized)
 
-    def _stub_domain_admin_client(self, auth_ok=True):
-        kc_v3.Client(
-            auth_url='http://server.test:5000/v3',
-            cacert=None,
-            cert=None,
-            endpoint='http://server.test:5000/v3',
-            insecure=False,
-            key=None,
-            password='adminsecret',
-            user_domain_id='adomain123',
-            username='adminuser123').AndReturn(self.mock_admin_client)
+    def _stub_domain_admin_client(self):
+        mock_ks_auth = self.m.CreateMockAnything()
+        mock_ks_auth.get_token(mox.IsA(ks_session.Session)).AndReturn('tok')
+
+        m = ks_auth_v3.Password(auth_url='http://server.test:5000/v3',
+                                password='adminsecret',
+                                domain_id='adomain123',
+                                user_domain_id='adomain123',
+                                username='adminuser123')
+        m.AndReturn(mock_ks_auth)
+
+        n = kc_v3.Client(session=mox.IsA(ks_session.Session),
+                         auth=mock_ks_auth)
+        n.AndReturn(self.mock_admin_client)
+
         self.mock_admin_client.domains = self.mock_ks_v3_client_domain_mngr
-        self.mock_admin_client.authenticate(
-            domain_id='adomain123').AndReturn(auth_ok)
-        if auth_ok:
-            self.mock_admin_client.auth_ref = self.m.CreateMockAnything()
-            self.mock_admin_client.auth_ref.user_id = '1234'
 
     def _stubs_v3(self, method='token', trust_scoped=True,
                   user_id='trustor_user_id', auth_ref=None, client=True):
@@ -1507,23 +1506,22 @@ class KeystoneClientTestDomainName(KeystoneClientTest):
         self.mock_ks_v3_client_domain_mngr.list(
             name='fake_domain_name').AndReturn([dummy_domain])
 
-    def _stub_domain_admin_client(self, auth_ok=True):
-        kc_v3.Client(
-            auth_url='http://server.test:5000/v3',
-            cacert=None,
-            cert=None,
-            endpoint='http://server.test:5000/v3',
-            insecure=False,
-            key=None,
-            password='adminsecret',
-            user_domain_name='fake_domain_name',
-            username='adminuser123').AndReturn(self.mock_admin_client)
+    def _stub_domain_admin_client(self):
+        mock_ks_auth = self.m.CreateMockAnything()
+        mock_ks_auth.get_token(mox.IsA(ks_session.Session)).AndReturn('tok')
+
+        m = ks_auth_v3.Password(auth_url='http://server.test:5000/v3',
+                                password='adminsecret',
+                                domain_name='fake_domain_name',
+                                user_domain_name='fake_domain_name',
+                                username='adminuser123')
+        m.AndReturn(mock_ks_auth)
+
+        n = kc_v3.Client(session=mox.IsA(ks_session.Session),
+                         auth=mock_ks_auth)
+        n.AndReturn(self.mock_admin_client)
+
         self.mock_admin_client.domains = self.mock_ks_v3_client_domain_mngr
-        self.mock_admin_client.authenticate(
-            domain_name='fake_domain_name').AndReturn(auth_ok)
-        if auth_ok:
-            self.mock_admin_client.auth_ref = self.m.CreateMockAnything()
-            self.mock_admin_client.auth_ref.user_id = '1234'
 
     def _stub_domain_user_pw_auth(self):
         ks_auth_v3.Password(auth_url='http://server.test:5000/v3',

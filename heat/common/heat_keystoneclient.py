@@ -140,22 +140,30 @@ class KeystoneClientV3(object):
     @property
     def domain_admin_client(self):
         if not self._domain_admin_client:
-            # Create domain admin client connection to v3 API
-            admin_creds = self._domain_admin_creds()
-            admin_creds.update(self._ssl_options())
-            c = kc_v3.Client(**admin_creds)
             # Note we must specify the domain when getting the token
             # as only a domain scoped token can create projects in the domain
             if self._stack_domain_is_id:
-                auth_kwargs = {'domain_id': self.stack_domain}
+                auth_kwargs = {'domain_id': self.stack_domain,
+                               'user_domain_id': self.stack_domain}
             else:
-                auth_kwargs = {'domain_name': self.stack_domain}
+                auth_kwargs = {'domain_name': self.stack_domain,
+                               'user_domain_name': self.stack_domain}
+
+            auth = kc_auth_v3.Password(username=self.domain_admin_user,
+                                       password=self.domain_admin_password,
+                                       auth_url=self.v3_endpoint,
+                                       **auth_kwargs)
+
+            # NOTE(jamielennox): just do something to ensure a valid token
             try:
-                c.authenticate(**auth_kwargs)
-                self._domain_admin_client = c
+                auth.get_token(self.session)
             except kc_exception.Unauthorized:
                 LOG.error(_LE("Domain admin client authentication failed"))
                 raise exception.AuthorizationFailure()
+
+            self._domain_admin_client = kc_v3.Client(session=self.session,
+                                                     auth=auth)
+
         return self._domain_admin_client
 
     def _v3_client_init(self):
@@ -192,18 +200,6 @@ class KeystoneClientV3(object):
             'auth_url': self.v3_endpoint,
             'endpoint': self.v3_endpoint,
             'project_name': cfg.CONF.keystone_authtoken.admin_tenant_name}
-        return creds
-
-    def _domain_admin_creds(self):
-        creds = {
-            'username': self.domain_admin_user,
-            'password': self.domain_admin_password,
-            'auth_url': self.v3_endpoint,
-            'endpoint': self.v3_endpoint}
-        if self._stack_domain_is_id:
-            creds['user_domain_id'] = self.stack_domain
-        else:
-            creds['user_domain_name'] = self.stack_domain
         return creds
 
     def _ssl_options(self):
