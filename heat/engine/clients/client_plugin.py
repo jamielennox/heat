@@ -12,6 +12,8 @@
 #    under the License.
 
 import abc
+
+from keystoneclient import session
 from oslo.config import cfg
 import six
 
@@ -97,3 +99,11 @@ class ClientPlugin(object):
         '''Raises the exception unless it is a not-found.'''
         if not self.is_not_found(ex):
             raise ex
+
+    def _get_session(self, client):
+        return session.Session.construct({
+            'cacert': self._get_client_option(client, 'ca_file'),
+            'insecure': self._get_client_option(client, 'insecure'),
+            'cert': self._get_client_option(client, 'cert_file'),
+            'key': self._get_client_option(client, 'key_file'),
+        })
