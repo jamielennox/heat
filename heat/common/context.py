@@ -11,6 +11,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from keystoneclient import access
 from keystoneclient.auth.identity import base
 from keystoneclient.auth.identity import v3
 from keystoneclient.auth import token_endpoint
@@ -177,8 +178,9 @@ class RequestContext(context.RequestContext):
                                trust_id=self.trust_id)
 
         if self.auth_token_info:
-            return _AccessInfoPlugin(self._keystone_v3_endpoint,
-                                     self.auth_token_info)
+            auth_ref = access.AccessInfo.factory(body=self.auth_token_info,
+                                                 auth_token=self.auth_token)
+            return _AccessInfoPlugin(self._keystone_v3_endpoint, auth_ref)
 
         if self.auth_token:
             # FIXME(jamielennox): This is broken but consistent. If you

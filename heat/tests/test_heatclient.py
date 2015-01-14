@@ -426,8 +426,8 @@ class KeystoneClientTest(common.HeatTestCase):
         ctx.password = None
         ctx.trust_id = None
         ctx.auth_token = 'ctx_token'
-        ctx.auth_token_info = ks_access.AccessInfo.factory(body={
-            'access': {'token': {'id': 'abcd1234', 'expires': '123'}}})
+        ctx.auth_token_info = {'access': {
+            'token': {'id': 'abcd1234', 'expires': '123'}}}
         heat_ks_client = heat_keystoneclient.KeystoneClient(ctx)
         heat_ks_client.client
         self.assertIsNotNone(heat_ks_client._client)
@@ -448,8 +448,7 @@ class KeystoneClientTest(common.HeatTestCase):
         ctx.password = None
         ctx.trust_id = None
         ctx.auth_token = 'ctx_token'
-        ctx.auth_token_info = ks_access.AccessInfo.factory(
-            body={'token': {'expires': '456', 'methods': []}})
+        ctx.auth_token_info = {'token': {'expires': '456', 'methods': []}}
         heat_ks_client = heat_keystoneclient.KeystoneClient(ctx)
         heat_ks_client.client
         self.assertIsNotNone(heat_ks_client._client)
